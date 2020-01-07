@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Cálculo ISR</title>
+
+  <link rel="stylesheet" href="assets/css/spectre.min.css">
+</head>
+<body>
+  <style>
+    .container {
+      margin-top: 2em;
+    }
+  </style>
+  <div id="app">
+    <div class="container">
+      <div class="columns">
+        <div class="column col-4 col-xs-12"></div>
+        <div class="column col-4 col-xs-12">
+          <div class="panel">
+            <div class="panel-header text-center">
+
+            </div>
+            <div class="panel-body">
+              <div class="form-group">
+                <div class="col-4 col-sm-12">
+                  <label class="form-label">Ingreso mensual bruto</label>
+                </div>
+                <div class="col-8 col-sm-12">
+                  <input class="form-input" type="number" placeholder="0.00" v-model="ingreso" @input="calculate" @focus="$event.target.select()">
+                </div>
+              </div>
+              <div v-if="ingreso">
+                <div class="form-group columns">
+                  <div class="column col-6 col-sm-12">
+                    <label class="form-label">Porcentaje a aplicar sobre excedente del Límite Inferior</label>
+                  </div>
+                  <div class="column col-6 col-sm-12 text-right">
+                    <h4>{{ porcentaje + ' %' }}</h4>
+                  </div>
+                </div>
+                <div class="form-group columns">
+                  <div class="column col-6 col-sm-12">
+                    <label class="form-label" for="input-example-5">ISR a retener</label>
+                  </div>
+                  <div class="column col-6 col-sm-12 text-right">
+                    <h4>{{ '$ ' + precise_round(isr, 2) }}</h4>
+                  </div>
+                </div>
+                <div class="form-group columns">
+                  <div class="column col-6 col-sm-12">
+                    <label class="form-label" for="input-example-5">Ingreso después de ISR</label>
+                  </div>
+                  <div class="column col-6 col-sm-12 text-right">
+                    <h4>{{ '$ ' + precise_round(pago, 2) }}</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="panel-footer">
+              <!-- <button class="btn btn-primary btn-block">Save</button> -->
+            </div>
+          </div>
+        </div>
+        <div class="column col-4 col-xs-12"></div>
+      </div>
+    </div>
+  </div>
+  <script src="assets/js/vue.min.js"></script>
+  <script>
+    const app = new Vue({
+      el: '#app',
+      data: () => ({
+        ingreso: 0,
+        porcentaje: 0,
+        isr: 0,
+        pago: 0,
+        tabulador: [
+          {
+            limite_i      : 0.01,
+            limite_s      : 578.52,
+            cuota         : 0,
+            porcentaje    : 1.92
+          },
+          {
+            limite_i      : 578.53,
+            limite_s      : 4910.18,
+            cuota         : 11.11,
+            porcentaje    : 6.4
+          },
+          {
+            limite_i      : 4910.19,
+            limite_s      : 8629.2,
+            cuota         : 288.33,
+            porcentaje    : 10.88
+          },
+          {
+            limite_i      : 8629.21,
+            limite_s      : 10031.07,
+            cuota         : 692.96,
+            porcentaje    : 16
+          },
+          {
+            limite_i      : 10031.08,
+            limite_s      : 12009.94,
+            cuota         : 917.26,
+            porcentaje    : 17.92
+          },
+          {
+            limite_i      : 12009.95,
+            limite_s      : 24222.31,
+            cuota         : 1271.87,
+            porcentaje    : 21.36
+          },
+          {
+            limite_i      : 24222.32,
+            limite_s      : 38177.69,
+            cuota         : 3880.44,
+            porcentaje    : 23.52
+          },
+          {
+            limite_i      : 38177.7,
+            limite_s      : 72887.5,
+            cuota         : 7162.74,
+            porcentaje    : 30
+          },
+          {
+            limite_i      : 72887.51,
+            limite_s      : 97183.33,
+            cuota         : 17575.69,
+            porcentaje    : 32
+          },
+          {
+            limite_i      : 97183.34,
+            limite_s      : 291550,
+            cuota         : 25350.35,
+            porcentaje    : 34
+          },
+          {
+            limite_i      : 291550.01,
+            limite_s      : null,
+            cuota         : 91435.02,
+            porcentaje    : 35
+          },
+        ]
+      }),
+      methods: {
+        calculate () {
+          const ingreso = this.ingreso;
+          const tabulador = this.tabulador;
+          let tabla;
+
+          for (let i = 0; i < this.tabulador.length; i++) {
+            // En el caso especifico de el primer elemento del array
+            if (i === 0) {
+              if (ingreso < tabulador[0].limite_s) {
+                tabla = tabulador[0];
+                break;
+              }
+            }
+            // En el caso especifico de el último elemento del array
+            if (i === 10) {
+              if (ingreso >= tabulador[10].limite_i) {
+                tabla = tabulador[10];
+                break;
+              }
+            }
+            // El resto de elementos
+            if (ingreso >= tabulador[i].limite_i && ingreso <= tabulador[i].limite_s) {
+              tabla = tabulador[i];
+              break;
+            }
+          }
+          limite_inf                     = tabla['limite_i'];
+          excedente_limite_inf           = ingreso-limite_inf;
+          porcentaje                     = tabla['porcentaje'];
+          porcentaje_sobre_limite_inf    = porcentaje/100;
+          procentaje_limite_inf          = excedente_limite_inf*porcentaje_sobre_limite_inf;
+          cuota_fija                     = tabla['cuota'];
+          isr                            = procentaje_limite_inf+cuota_fija;
+          pago                           = ingreso-isr;
+
+          this.porcentaje = porcentaje
+          this.isr        = isr
+          this.pago       = pago
+        },
+        precise_round (num, dec){
+          if ((typeof num !== 'number') || (typeof dec !== 'number')) {return false}; 
+          var num_sign = num >= 0 ? 1 : -1;
+          var n = (Math.round((num*Math.pow(10,dec))+(num_sign*0.0001))/Math.pow(10,dec)).toFixed(dec)
+          var parts=n.toString().split(".");
+          return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (parts[1] ? "." + parts[1] : "");
+        }
+      }
+    })
+  </script>
+</body>
+</html>
